@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Crawler & Search</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0f1117;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 1.5rem 2rem;
+      background: #161822;
+      border-bottom: 1px solid #2a2d3a;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    header h1 { font-size: 1.25rem; font-weight: 600; color: #fff; }
+    header span { color: #6c7293; font-size: 0.85rem; }
+
+    .container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #161822;
+      border: 1px solid #2a2d3a;
+      border-radius: 10px;
+      padding: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #2a2d3a;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+    .form-group label { font-size: 0.75rem; color: #8b8fa3; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    input[type="text"], input[type="number"] {
+      background: #1e2030;
+      border: 1px solid #2a2d3a;
+      border-radius: 6px;
+      padding: 0.6rem 0.75rem;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus { border-color: #5c6bc0; }
+
+    button {
+      padding: 0.6rem 1.25rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    button:hover { opacity: 0.85; }
+
+    .btn-primary { background: #5c6bc0; color: #fff; }
+    .btn-warn    { background: #ffa726; color: #1e2030; font-size: 0.75rem; padding: 0.35rem 0.7rem; }
+    .btn-success { background: #66bb6a; color: #1e2030; font-size: 0.75rem; padding: 0.35rem 0.7rem; }
+    .btn-danger  { background: #ef5350; color: #fff; font-size: 0.75rem; padding: 0.35rem 0.7rem; }
+
+    .results-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .results-list li {
+      padding: 0.75rem;
+      background: #1e2030;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .results-list a { color: #7986cb; text-decoration: none; word-break: break-all; }
+    .results-list a:hover { text-decoration: underline; }
+
+    .meta { color: #6c7293; font-size: 0.75rem; }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .stat-card {
+      background: #1e2030;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .stat-card .value { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    .stat-card .label { font-size: 0.7rem; color: #6c7293; text-transform: uppercase; margin-top: 0.25rem; }
+
+    .crawler-row {
+      display: grid;
+      grid-template-columns: 340px auto 1fr 150px;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      background: #1e2030;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .crawler-row .origin { color: #7986cb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .crawler-actions { display: flex; align-items: center; justify-content: center; gap: 0.35rem; }
+
+    .crawler-badges { display: flex; align-items: center; gap: 0.35rem; justify-content: flex-end; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .badge-running  { background: #1b5e20; color: #66bb6a; }
+    .badge-paused   { background: #1a237e; color: #7986cb; }
+    .badge-finished { background: #1b5e20; color: #66bb6a; }
+    .badge-stopping { background: #4a3520; color: #ffa726; animation: pulse 1s infinite; }
+    .badge-stopped  { background: #4a1c1c; color: #ef5350; }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .badge-bp       { background: #4a1c1c; color: #ef5350; }
+
+    .empty-state { color: #6c7293; font-size: 0.85rem; text-align: center; padding: 2rem 0; }
+
+    #searchInput { flex: 1; min-width: 200px; }
+    #originInput { flex: 1; min-width: 250px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Web Crawler & Search Engine</h1>
+    <span>v1.0</span>
+  </header>
+
+  <div class="container">
+    <!-- Index Panel -->
+    <div class="card">
+      <h2>Index</h2>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>Origin URL</label>
+          <input type="text" id="originInput" placeholder="https://example.com">
+        </div>
+        <div class="form-group">
+          <label>Depth (k)</label>
+          <input type="number" id="depthInput" value="2" min="1" max="100" style="width:80px">
+        </div>
+        <button class="btn-primary" onclick="startCrawl()">Start Crawl</button>
+      </div>
+      <p id="indexMsg" style="margin-top:0.75rem; font-size:0.82rem; color:#6c7293;"></p>
+    </div>
+
+    <!-- Search Panel -->
+    <div class="card">
+      <h2>Search</h2>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>Query</label>
+          <input type="text" id="searchInput" placeholder="Enter search terms...">
+        </div>
+        <button class="btn-primary" onclick="doSearch()">Search</button>
+      </div>
+      <div id="searchResults" style="margin-top:1rem;">
+        <div class="empty-state">Enter a query to search indexed pages.</div>
+      </div>
+    </div>
+
+    <!-- Status Panel -->
+    <div class="card">
+      <h2>System Status</h2>
+      <div class="status-grid" id="statsGrid">
+        <div class="stat-card"><div class="value" id="statCrawlers">-</div><div class="label">Crawlers</div></div>
+        <div class="stat-card"><div class="value" id="statPages">-</div><div class="label">Pages Indexed</div></div>
+        <div class="stat-card"><div class="value" id="statWords">-</div><div class="label">Words Indexed</div></div>
+      </div>
+      <div id="crawlersList" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+    const stoppingSet = new Set();
+
+    function resultScore(r) {
+      if (r.relevance_score !== undefined && r.relevance_score !== null) return r.relevance_score;
+      if (r.score !== undefined && r.score !== null) return r.score;
+      return '';
+    }
+
+    async function startCrawl() {
+      const origin = document.getElementById('originInput').value.trim();
+      const k = parseInt(document.getElementById('depthInput').value, 10);
+      const msg = document.getElementById('indexMsg');
+
+      if (!origin) { msg.textContent = 'Please enter a URL.'; return; }
+      if (!k || k < 1) { msg.textContent = 'Depth must be at least 1.'; return; }
+
+      msg.textContent = 'Starting...';
+      try {
+        const res = await fetch(API + '/index', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ origin, k })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          msg.textContent = 'Crawler started: ' + data.crawler_id;
+          document.getElementById('originInput').value = '';
+          document.getElementById('depthInput').value = '2';
+        } else {
+          msg.textContent = 'Error: ' + (data.error || 'Unknown');
+        }
+      } catch (e) {
+        msg.textContent = 'Network error: ' + e.message;
+      }
+      refreshStatus();
+    }
+
+    async function doSearch() {
+      const query = document.getElementById('searchInput').value.trim();
+      const container = document.getElementById('searchResults');
+
+      if (!query) {
+        container.innerHTML = '<div class="empty-state">Enter a query to search indexed pages.</div>';
+        return;
+      }
+
+      container.innerHTML = '<div class="empty-state">Searching...</div>';
+      try {
+        const res = await fetch(API + '/search?query=' + encodeURIComponent(query) + '&limit=30');
+        const data = await res.json();
+
+        if (!data.results || data.results.length === 0) {
+          container.innerHTML = '<div class="empty-state">No results found for "' + query + '".</div>';
+          return;
+        }
+
+        let html = '<ul class="results-list">';
+        for (const r of data.results) {
+          const sc = resultScore(r);
+          html += '<li>'
+            + '<a href="' + r.relevant_url + '" target="_blank">' + r.relevant_url + '</a>'
+            + '<div class="meta">origin: ' + r.origin_url + ' &middot; depth: ' + r.depth + ' &middot; score: ' + sc + '</div>'
+            + '</li>';
+        }
+        html += '</ul>';
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<div class="empty-state">Error: ' + e.message + '</div>';
+      }
+    }
+
+    async function refreshStatus() {
+      try {
+        const res = await fetch(API + '/status');
+        const data = await res.json();
+
+        document.getElementById('statCrawlers').textContent = data.total_crawlers;
+        document.getElementById('statPages').textContent = data.total_pages_indexed;
+        document.getElementById('statWords').textContent = data.total_words_indexed;
+
+        const list = document.getElementById('crawlersList');
+        if (!data.crawlers || data.crawlers.length === 0) {
+          list.innerHTML = '<div class="empty-state">No crawlers yet.</div>';
+          return;
+        }
+
+        let html = '';
+        for (const c of data.crawlers) {
+          let badges = '', actionsHtml = '<div class="crawler-actions"></div>';
+          const isStopping = stoppingSet.has(c.crawler_id);
+          if (!c.is_running) {
+            stoppingSet.delete(c.crawler_id);
+            badges = c.is_finished
+              ? '<span class="badge badge-finished">Finished</span>'
+              : '<span class="badge badge-stopped">Stopped</span>';
+          } else if (isStopping) {
+            badges = '<span class="badge badge-stopping">Stopping...</span>';
+          } else if (c.is_paused) {
+            badges = '<span class="badge badge-paused">Paused</span>';
+            actionsHtml = '<div class="crawler-actions">'
+              + '<button class="btn-success" onclick="resumeCrawler(\'' + c.crawler_id + '\')">Resume</button>'
+              + '<button class="btn-danger" onclick="stopCrawler(\'' + c.crawler_id + '\')">Stop</button>'
+              + '</div>';
+          } else {
+            badges = '<span class="badge badge-running">Running</span>';
+            actionsHtml = '<div class="crawler-actions">'
+              + '<button class="btn-warn" onclick="pauseCrawler(\'' + c.crawler_id + '\')">Pause</button>'
+              + '<button class="btn-danger" onclick="stopCrawler(\'' + c.crawler_id + '\')">Stop</button>'
+              + '</div>';
+          }
+          if (c.backpressure_active) {
+            badges += ' <span class="badge badge-bp">Backpressure</span>';
+          }
+
+          html += '<div class="crawler-row">'
+            + '<span class="origin" title="' + c.origin + '">' + c.origin + '</span>'
+            + '<span class="meta">depth ' + c.max_depth + ' &middot; visited ' + c.urls_visited + ' &middot; queued ' + c.urls_queued + '/' + c.queue_capacity + '</span>'
+            + actionsHtml
+            + '<div class="crawler-badges">' + badges + '</div>'
+            + '</div>';
+        }
+        list.innerHTML = html;
+      } catch (e) {
+        /* silent */
+      }
+    }
+
+    async function stopCrawler(id) {
+      stoppingSet.add(id);
+      refreshStatus();
+      await fetch(API + '/stop/' + id, { method: 'POST' });
+      refreshStatus();
+    }
+
+    async function pauseCrawler(id) {
+      await fetch(API + '/pause/' + id, { method: 'POST' });
+      refreshStatus();
+    }
+
+    async function resumeCrawler(id) {
+      await fetch(API + '/resume/' + id, { method: 'POST' });
+      refreshStatus();
+    }
+
+    document.getElementById('searchInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') doSearch();
+    });
+
+    refreshStatus();
+    setInterval(refreshStatus, 3000);
+  </script>
+</body>
+</html>

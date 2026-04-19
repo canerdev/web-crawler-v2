@@ -1,0 +1,5 @@
+# Production recommendations
+
+The most impactful change for production would be moving the inverted index out of process memory into a **durable store** with clear backup and consistency semantics. A first step on one machine is often **SQLite**; at larger scale or for richer relevance, a **full-text engine** (for example Elasticsearch or OpenSearch) or a managed search service replaces ad hoc scoring with something built for ranking and operations.
+
+On the crawling side, honor **robots.txt** and **per-host** rate limits and concurrency caps (not only a global throttle), and keep **legal/terms** constraints in mind. Persist frontier or checkpoint state so crashes do not discard large queues. Run behind a **production WSGI server** (for example Gunicorn), add **metrics** and health checks, and **containerize** if you deploy behind a load balancer. That operational story matches Project 1; Project 2 differs only in how the codebase was produced (documented multi-agent workflow), not in these deployment fundamentals.
