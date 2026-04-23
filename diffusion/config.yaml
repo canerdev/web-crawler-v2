@@ -1,0 +1,118 @@
+# =============================================================================
+# Conditional Diffusion Model — Multi-Domain Configuration
+#
+# Supported Datasets:
+#  - 'douban' : Source = Movie, Target = Music || Source = Music, Target = Movie
+#  - 'amazon' : Source = Book,  Target = Movie
+# =============================================================================
+
+# Define which dataset settings to use for the current run
+active_dataset: "douban" # Options: "douban", "amazon"
+
+# ---------------------------------------------------------------------------
+# Dataset Specific Settings
+# ---------------------------------------------------------------------------
+datasets:
+  douban:
+    # Embedding keys as saved in the GNN .pt file
+    source_emb_key: "music"
+    target_emb_key: "movie"
+
+    paths:
+      embeddings: "assets/lightgcn_dim256.pt" # Adjust filename as needed
+
+      inters:
+        source_train: "inters/DoubanMusic.train.inter"
+        target_train: "inters/DoubanMovie.train.inter"
+        target_valid: "inters/DoubanMovie.valid.inter"
+        target_test: "inters/DoubanMovie.test.inter"
+
+      mappings:
+        source: "mappings/music_mapping.json"
+        target: "mappings/movie_mapping.json"
+        user: "mappings/user_mapping.json"
+
+      checkpoints:
+        best_model: "checkpoints/douban_best_model.pt"
+
+    model:
+      embed_dim: 256
+
+  amazon:
+    # Embedding keys as saved in the GNN .pt file (Handle 'Senaryo B' easily)
+    source_emb_key: "book"
+    target_emb_key: "movie"
+
+    paths:
+      embeddings: "assets/amazon_lightgcn_dim256.pt" # Adjust filename as needed
+
+      inters:
+        source_train: "inters/AmazonBook.train.inter"
+        target_train: "inters/AmazonMovie.train.inter"
+        target_valid: "inters/AmazonMovie.valid.inter"
+        target_test: "inters/AmazonMovie.test.inter"
+
+      mappings:
+        source: "mappings/amazon_book_mapping.json"
+        target: "mappings/amazon_movie_mapping.json"
+        user: "mappings/amazon_user_mapping.json"
+
+      checkpoints:
+        best_model: "checkpoints/amazon_best_model.pt"
+
+    model:
+      embed_dim: 256 # Amazon uses 256-dim embeddings
+
+# ---------------------------------------------------------------------------
+# Global Training Hyperparameters
+# ---------------------------------------------------------------------------
+training:
+  seed: 42
+  batch_size: 512
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-6
+  num_epochs: 100
+  max_seq_len: 10
+  grad_clip_norm: 1.0
+  validation_freq: 2
+  early_stop_patience: 15
+
+# ---------------------------------------------------------------------------
+# Global DataLoader
+# ---------------------------------------------------------------------------
+dataloader:
+  train_num_workers: 4
+  train_pin_memory: true
+  valid_batch_size: 512
+  valid_num_workers: 4
+  valid_pin_memory: true
+
+# ---------------------------------------------------------------------------
+# Global Model Architecture & Diffusion
+# ---------------------------------------------------------------------------
+model:
+  num_heads: 8 # Adjust based on embed_dim (e.g., 128/4=32, 256/8=32)
+  dropout: 0.1
+  use_source_stream: true # Ablation flag: true=Triple-Stream, false=GNN+target only
+
+  diffusion:
+    steps: 100
+    p_uncond: 0.1
+
+  scheduler:
+    eta_min: 1.0e-5
+    warmup_steps: 1000
+
+# ---------------------------------------------------------------------------
+# Global Validation / Inference Settings
+# ---------------------------------------------------------------------------
+validation:
+  cfg_w: 2.0
+  top_k: 10
+
+# ---------------------------------------------------------------------------
+# Predict for a target user settings
+# ---------------------------------------------------------------------------
+inference:
+  target_user_id: "10002"
+  top_k: 10
